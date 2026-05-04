@@ -1,5 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import * as pgDb from "./db-pg";
 import { InsertUser, users, chatMessages, connectors, actionLogs, ChatMessage, Connector, ActionLog } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -19,6 +20,9 @@ export async function getDb() {
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.upsertUser(user);
+  }
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
@@ -78,6 +82,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByOpenId(openId: string) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.getUserByOpenId(openId);
+  }
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get user: database not available");
@@ -91,6 +98,9 @@ export async function getUserByOpenId(openId: string) {
 
 // Chat message queries
 export async function getChatHistory(userId: number, conversationId: string, limit = 50) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.getChatHistory(userId, conversationId, limit);
+  }
   const db = await getDb();
   if (!db) return [];
   
@@ -103,6 +113,9 @@ export async function getChatHistory(userId: number, conversationId: string, lim
 }
 
 export async function saveChatMessage(userId: number, conversationId: string, role: "user" | "assistant", content: string) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.saveChatMessage(userId, conversationId, role, content);
+  }
   const db = await getDb();
   if (!db) return null;
   
@@ -118,6 +131,9 @@ export async function saveChatMessage(userId: number, conversationId: string, ro
 
 // Connector queries
 export async function getConnectors(userId: number) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.getConnectors(userId);
+  }
   const db = await getDb();
   if (!db) return [];
   
@@ -125,6 +141,9 @@ export async function getConnectors(userId: number) {
 }
 
 export async function saveConnector(userId: number, type: "github" | "huggingface" | "vercel", name: string, encryptedToken: string) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.saveConnector(userId, type, name, encryptedToken);
+  }
   const db = await getDb();
   if (!db) return null;
   
@@ -137,6 +156,9 @@ export async function saveConnector(userId: number, type: "github" | "huggingfac
 }
 
 export async function deleteConnector(userId: number, connectorId: number) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.deleteConnector(userId, connectorId);
+  }
   const db = await getDb();
   if (!db) return null;
   
@@ -145,6 +167,9 @@ export async function deleteConnector(userId: number, connectorId: number) {
 
 // Action log queries
 export async function getActionLogs(userId: number, jobId: string, limit = 100) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.getActionLogs(userId, jobId, limit);
+  }
   const db = await getDb();
   if (!db) return [];
   
@@ -157,6 +182,9 @@ export async function getActionLogs(userId: number, jobId: string, limit = 100) 
 }
 
 export async function saveActionLog(userId: number, jobId: string, action: string, status: "pending" | "running" | "success" | "error", details?: string) {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) {
+    return pgDb.saveActionLog(userId, jobId, action, status, details);
+  }
   const db = await getDb();
   if (!db) return null;
   
