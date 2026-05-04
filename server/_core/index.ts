@@ -31,49 +31,48 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 const app = express();
 
-export default app;
+// Configure body parser with larger size limit for file uploads
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-async function startServer() {
-  const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
-  // SSE streaming endpoint
-  app.use(createStreamingRouter());
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+registerStorageProxy(app);
+registerOAuthRoutes(app);
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+// SSE streaming endpoint
+app.use(createStreamingRouter());
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
-  }
+// tRPC API
+app.use(
+  "/api/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
 
-  if (process.env.VERCEL) {
-    console.log("Running on Vercel, skipping server.listen()");
-    return;
-  }
-
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
-  });
-}
-
+// For Vercel, we only need to export the app with routes registered
+// We skip static serving here because vercel.json handles it via rewrites
 if (!process.env.VERCEL) {
-  startServer().catch(console.error);
+  if (process.env.NODE_ENV === "development") {
+    // Development mode setup is async, so we wrap it
+    (async () => {
+      const server = createServer(app);
+      await setupVite(app, server);
+      const port = await findAvailablePort(3000);
+      server.listen(port, () => {
+        console.log(`Server running on http://localhost:${port}/`);
+      });
+    })().catch(console.error);
+  } else {
+    // Production mode
+    serveStatic(app);
+    const server = createServer(app);
+    findAvailablePort(3000).then(port => {
+      server.listen(port, () => {
+        console.log(`Server running on http://localhost:${port}/`);
+      });
+    });
+  }
 }
+
+export default app;
