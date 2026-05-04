@@ -1,4 +1,4 @@
-import app from '../server/_core/index.ts';
+import app from '../server/_core/index';
 import path from 'path';
 import express from 'express';
 
